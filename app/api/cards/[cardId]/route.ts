@@ -38,6 +38,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   const { cardId } = await params;
+
+  const card = await db.card.findUnique({ where: { id: cardId } });
+  if (!card) {
+    return NextResponse.json({ error: 'Card not found' }, { status: 404 });
+  }
+
+  if (card.creatorId !== session.user.id && card.assigneeId !== session.user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   const body = await req.json();
 
   const allowedFields = ['status', 'repoUrl', 'deployUrl', 'title', 'description'];
@@ -53,7 +63,21 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
   }
 
-  const card = await db.card.update({
+  if (typeof updates.title === 'string' && updates.title.length > 200) {
+    return NextResponse.json({ error: 'Title must be 200 characters or fewer' }, { status: 400 });
+  }
+
+  if (typeof updates.description === 'string' && updates.description.length > 50000) {
+    return NextResponse.json({ error: 'Description must be 50000 characters or fewer' }, { status: 400 });
+  }
+
+  for (const urlField of ['repoUrl', 'deployUrl'] as const) {
+    if (typeof updates[urlField] === 'string' && updates[urlField] !== '' && !String(updates[urlField]).startsWith('https://')) {
+      return NextResponse.json({ error: `${urlField} must start with https://` }, { status: 400 });
+    }
+  }
+
+  const updated = await db.card.update({
     where: { id: cardId },
     data: updates,
     include: {
@@ -62,7 +86,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     },
   });
 
-  return NextResponse.json(card);
+  return NextResponse.json(updated);
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
@@ -72,6 +96,15 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   }
 
   const { cardId } = await params;
+
+  const card = await db.card.findUnique({ where: { id: cardId } });
+  if (!card) {
+    return NextResponse.json({ error: 'Card not found' }, { status: 404 });
+  }
+
+  if (card.creatorId !== session.user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   await db.card.delete({ where: { id: cardId } });
 

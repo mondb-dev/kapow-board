@@ -48,11 +48,16 @@ export async function GET(req: NextRequest, { params }: Params) {
             return;
           }
 
-          const data = (await res.json()) as { status: string; messages: string[] };
+          const data = (await res.json()) as { status: string; messages: unknown };
+
+          // Validate that messages is an array of strings
+          const messages: string[] = Array.isArray(data.messages)
+            ? data.messages.filter((m): m is string => typeof m === 'string')
+            : [];
 
           // Only write new messages as CardEvents
-          const newMessages = data.messages.slice(lastMessageCount);
-          lastMessageCount = data.messages.length;
+          const newMessages = messages.slice(lastMessageCount);
+          lastMessageCount = messages.length;
 
           for (const msg of newMessages) {
             const eventType =

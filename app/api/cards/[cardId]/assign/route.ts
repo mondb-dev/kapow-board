@@ -48,14 +48,22 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (assigneeType === 'AGENT') {
     const runId = randomUUID();
 
-    const updated = await db.card.update({
-      where: { id: cardId },
+    const result = await db.card.updateMany({
+      where: { id: cardId, status: 'BACKLOG' },
       data: {
         assigneeType: 'AGENT',
         assigneeId: null,
         status: 'IN_PROGRESS',
         runId,
       },
+    });
+
+    if (result.count === 0) {
+      return NextResponse.json({ error: 'Card is already assigned or not in BACKLOG' }, { status: 409 });
+    }
+
+    const updated = await db.card.findUnique({
+      where: { id: cardId },
       include: {
         assignee: { select: { id: true, name: true, image: true } },
         creator: { select: { id: true, name: true, image: true } },
@@ -84,12 +92,20 @@ export async function POST(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const updated = await db.card.update({
-      where: { id: cardId },
+    const result = await db.card.updateMany({
+      where: { id: cardId, status: 'BACKLOG' },
       data: {
         assigneeType: 'HUMAN',
         assigneeId: targetUserId,
       },
+    });
+
+    if (result.count === 0) {
+      return NextResponse.json({ error: 'Card is already assigned or not in BACKLOG' }, { status: 409 });
+    }
+
+    const updated = await db.card.findUnique({
+      where: { id: cardId },
       include: {
         assignee: { select: { id: true, name: true, image: true } },
         creator: { select: { id: true, name: true, image: true } },
