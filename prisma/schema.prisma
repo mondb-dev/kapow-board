@@ -26,14 +26,19 @@ model Card {
   assigneeType AssigneeType @default(UNASSIGNED)
   assigneeId   String?
   assignee     User?        @relation("AssignedCards", fields: [assigneeId], references: [id])
-  creatorId    String
-  creator      User         @relation("CreatedCards", fields: [creatorId], references: [id])
+  creatorId    String?
+  creator      User?        @relation("CreatedCards", fields: [creatorId], references: [id])
   runId        String?
+  phaseId      String?
+  taskId       String?
   repoUrl      String?
   deployUrl    String?
   events       CardEvent[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+
+  @@index([runId])
+  @@index([taskId])
 }
 
 model CardEvent {
